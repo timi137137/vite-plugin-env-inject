@@ -21,7 +21,7 @@ This plugin keeps your source code unchanged while switching env access to a run
 - Auto-transforms `import.meta.env.VITE_*` and `process.env.VITE_*` to runtime global access
 - Auto-injects config script into `index.html`
 - Serves live config in `vite dev`
-- Emits Docker-ready config template and entrypoint on build
+- Emits runtime config template (`__vite_env_config__.js.template`) on build
 
 ## Installation
 
@@ -56,9 +56,9 @@ The plugin converts them at build time and injects a config script before your a
 envInject({
   prefix: 'VITE_',
   globalName: '__VITE_INJECT_ENV__',
-  configFile: '/__vite_env_config__.js',
+  configFile: '__vite_env_config__.js',
   include: ['VITE_EXTRA_KEY'],
-  dockerEntrypoint: true,
+  debug: true,
 })
 ```
 

@@ -1,17 +1,16 @@
-import { loadEnv, type Plugin } from 'vite'
+import { loadEnv, type Logger, type Plugin } from 'vite'
 import {
   DEFAULT_CONFIG_FILE,
   DEFAULT_CONFIG_TEMPLATE,
-  DEFAULT_DOCKER_ENTRYPOINT,
   DEFAULT_GLOBAL_NAME,
   DEFAULT_PREFIX,
   INJECTED_SCRIPT_ATTR,
 } from './constants'
+import { logEnvValues } from './log'
 import {
   buildScriptTag,
   generateConfigScript,
   generateConfigTemplate,
-  generateDockerEntrypoint,
   injectScriptIntoHtml,
   normalizePublicPath,
 } from './runtime'
@@ -25,18 +24,25 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
   const globalName = options.globalName ?? DEFAULT_GLOBAL_NAME
   const configFile = options.configFile ?? DEFAULT_CONFIG_FILE
   const include = options.include ?? []
-  const dockerEntrypoint = options.dockerEntrypoint ?? true
+  const debug = options.debug ?? false
 
   const collectedKeys = new Set<string>(include)
   let publicConfigPath = normalizePublicPath('/', configFile)
   let resolvedRoot = process.cwd()
   let resolvedMode = 'production'
+  let logger: Logger | undefined
 
   const addKeys = (keys: string[]) => {
     for (const key of keys) collectedKeys.add(key)
   }
 
   const getSortedKeys = () => [...collectedKeys].sort()
+
+  const resolveEnv = () =>
+    ({
+      ...process.env,
+      ...loadEnv(resolvedMode, resolvedRoot, prefix),
+    }) as Record<string, string>
 
   const serveConfigScript = (env: Record<string, string>) => {
     const values = Object.fromEntries(
@@ -54,6 +60,7 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
       resolvedRoot = config.root
       resolvedMode = config.mode
       publicConfigPath = normalizePublicPath(config.base, configFile)
+      logger = config.logger
     },
 
     transform(code, id) {
@@ -69,7 +76,15 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
     transformIndexHtml: {
       order: 'post',
       handler(html) {
-        if (getSortedKeys().length === 0) return html
+        const keys = getSortedKeys()
+        if (keys.length === 0) return html
+
+        if (debug && logger) {
+          logger.info(
+            `[vite-plugin-env-inject] inject script into html: ${publicConfigPath}`,
+          )
+          logger.info(`[vite-plugin-env-inject] collected keys: ${keys.join(', ')}`)
+        }
 
         const scriptTag = buildScriptTag(publicConfigPath).replace(
           '<script ',
@@ -88,10 +103,15 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
           return
         }
 
-        const env = {
-          ...process.env,
-          ...loadEnv(resolvedMode, resolvedRoot, prefix),
-        } as Record<string, string>
+        const env = resolveEnv()
+        const keys = getSortedKeys()
+
+        if (debug && logger) {
+          logger.info(
+            `[vite-plugin-env-inject] serve runtime config: ${publicConfigPath}`,
+          )
+          logEnvValues(logger, 'dev env values', keys, env)
+        }
 
         res.statusCode = 200
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
@@ -103,10 +123,16 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
       const keys = getSortedKeys()
       if (keys.length === 0) return
 
-      const buildEnv = {
-        ...process.env,
-        ...loadEnv(resolvedMode, resolvedRoot, prefix),
-      } as Record<string, string>
+      const buildEnv = resolveEnv()
+
+      if (debug && logger) {
+        logger.info('[vite-plugin-env-inject] generate runtime config assets')
+        logger.info(`[vite-plugin-env-inject] collected keys: ${keys.join(', ')}`)
+        logEnvValues(logger, 'build-time env values', keys, buildEnv)
+        logger.info(
+          `[vite-plugin-env-inject] emit ${configFile} (fallback) and ${DEFAULT_CONFIG_TEMPLATE}`,
+        )
+      }
 
       this.emitFile({
         type: 'asset',
@@ -119,18 +145,6 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
         fileName: DEFAULT_CONFIG_TEMPLATE,
         source: generateConfigTemplate(globalName, keys),
       })
-
-      if (dockerEntrypoint) {
-        this.emitFile({
-          type: 'asset',
-          fileName: DEFAULT_DOCKER_ENTRYPOINT,
-          source: generateDockerEntrypoint(
-            configFile,
-            DEFAULT_CONFIG_TEMPLATE,
-            DEFAULT_DOCKER_ENTRYPOINT,
-          ),
-        })
-      }
     },
   }
 }
