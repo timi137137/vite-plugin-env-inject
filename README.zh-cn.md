@@ -14,7 +14,7 @@
 
 Vite 默认在构建时将 `import.meta.env.VITE_*` 静态内联进产物，适合固定配置部署，但不适合「同一 Docker 镜像在不同环境使用不同配置」的场景。
 
-本插件在不改动业务代码写法的前提下，将环境变量访问切换为运行时配置脚本，容器启动时即可注入 `VITE_*` 值，无需重新构建。
+本插件在不改动业务代码写法的前提下，将环境变量访问切换为运行时配置脚本。**构建阶段不会读取环境变量**，只在容器启动或 `vite dev` 时才注入实际的 `VITE_*` 值。
 
 ## 特性
 
@@ -48,7 +48,13 @@ const apiUrl = import.meta.env.VITE_API_URL
 const token = process.env.VITE_API_TOKEN
 ```
 
-插件在构建时自动完成转换，并在应用 bundle 加载前注入配置脚本。
+构建时插件只做代码转换并输出配置**模板**；运行时再由配置脚本填入真实值，并在应用 bundle 加载前注入。
+
+| 阶段 | 行为 |
+|------|------|
+| `vite build` | 转换 env 访问、注入 script 标签、输出空占位文件 + `.template` |
+| 容器启动 | 由 Dockerfile 中的 `envsubst` 将 `.template` 渲染为 `__vite_env_config__.js` |
+| `vite dev` | dev server 从当前环境动态提供配置 |
 
 ### 配置项
 

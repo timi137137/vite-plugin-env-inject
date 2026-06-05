@@ -123,21 +123,26 @@ export function envInject(options: EnvInjectOptions = {}): Plugin {
       const keys = getSortedKeys()
       if (keys.length === 0) return
 
-      const buildEnv = resolveEnv()
+      const placeholderValues = Object.fromEntries(keys.map((key) => [key, '']))
 
       if (debug && logger) {
         logger.info('[vite-plugin-env-inject] generate runtime config assets')
         logger.info(`[vite-plugin-env-inject] collected keys: ${keys.join(', ')}`)
-        logEnvValues(logger, 'build-time env values', keys, buildEnv)
         logger.info(
-          `[vite-plugin-env-inject] emit ${configFile} (fallback) and ${DEFAULT_CONFIG_TEMPLATE}`,
+          '[vite-plugin-env-inject] build phase: runtime env is not available (expected)',
+        )
+        logger.info(
+          `[vite-plugin-env-inject] emit ${DEFAULT_CONFIG_TEMPLATE} for runtime injection`,
+        )
+        logger.info(
+          `[vite-plugin-env-inject] emit ${configFile} as empty placeholder (filled at runtime)`,
         )
       }
 
       this.emitFile({
         type: 'asset',
         fileName: configFile,
-        source: serveConfigScript(buildEnv),
+        source: generateConfigScript(globalName, placeholderValues),
       })
 
       this.emitFile({

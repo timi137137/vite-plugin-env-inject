@@ -14,7 +14,7 @@ A Vite plugin that injects **runtime** environment variables into browser builds
 
 Vite inlines `import.meta.env.VITE_*` at build time by default. That works for static deployments, but not when you need the **same Docker image** to run with different configuration per environment.
 
-This plugin keeps your source code unchanged while switching env access to a runtime config script — so container startup can inject `VITE_*` values without rebuilding.
+This plugin keeps your source code unchanged while switching env access to a runtime config script. **Environment variables are not read at build time** — they are injected when the container or dev server starts.
 
 ## Features
 
@@ -48,7 +48,13 @@ const apiUrl = import.meta.env.VITE_API_URL
 const token = process.env.VITE_API_TOKEN
 ```
 
-The plugin converts them at build time and injects a config script before your app bundle loads.
+At build time the plugin only transforms code and emits a config **template**. At runtime, the config script is populated with actual `VITE_*` values before your app bundle loads.
+
+| Phase | What happens |
+|-------|----------------|
+| `vite build` | Transform env access, inject script tag, emit empty placeholder + `.template` |
+| Container startup | Render `.template` → `__vite_env_config__.js` via `envsubst` (see your Dockerfile) |
+| `vite dev` | Dev server serves live config from current environment |
 
 ### Options
 
