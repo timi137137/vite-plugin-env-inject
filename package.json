@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-env-inject",
-  "version": "0.1.0",
-  "description": "Vite plugin that replaces import.meta.env.VITE_* with process.env.VITE_* for Node builds",
+  "version": "0.2.0",
+  "description": "Vite plugin for runtime environment variable injection in browser builds and Docker deployments",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -49,6 +49,7 @@
     "magic-string": "^0.30.17"
   },
   "devDependencies": {
+    "@types/node": "^20.5.7",
     "typescript": "^5.8.2",
     "vite": "^8.0.0",
     "vitest": "^3.0.9"

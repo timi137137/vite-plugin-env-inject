@@ -8,14 +8,20 @@
 
 English | [简体中文](README.zh-cn.md)
 
-A Vite plugin that replaces `import.meta.env.VITE_*` with `process.env.VITE_*` during **Node builds**, so your application reads configuration from system environment variables at runtime — no rebuild required when env values change.
+A Vite plugin that injects **runtime** environment variables into browser builds.
+
+## Motivation
+
+Vite inlines `import.meta.env.VITE_*` at build time by default. That works for static deployments, but not when you need the **same Docker image** to run with different configuration per environment.
+
+This plugin keeps your source code unchanged while switching env access to a runtime config script — so container startup can inject `VITE_*` values without rebuilding.
 
 ## Features
 
-- Transforms `import.meta.env.VITE_*` to `process.env.VITE_*` at build time
-- Supports dot notation and bracket notation access
-- Node / SSR builds only
-- Runs with `enforce: 'pre'` before Vite's default static inlining, preventing values from being baked into the output
+- Auto-transforms `import.meta.env.VITE_*` and `process.env.VITE_*` to runtime global access
+- Auto-injects config script into `index.html`
+- Serves live config in `vite dev`
+- Emits Docker-ready config template and entrypoint on build
 
 ## Installation
 
@@ -32,113 +38,38 @@ import { envInject } from 'vite-plugin-env-inject'
 
 export default defineConfig({
   plugins: [envInject()],
-  build: {
-    ssr: 'src/entry.ts',
-    rollupOptions: {
-      output: { format: 'esm' },
-    },
-  },
 })
 ```
 
+Use env vars as usual in source code:
+
 ```ts
-// src/entry.ts
 const apiUrl = import.meta.env.VITE_API_URL
-console.log(apiUrl)
+const token = process.env.VITE_API_TOKEN
 ```
 
-After building, the output becomes:
+The plugin converts them at build time and injects a config script before your app bundle loads.
 
-```ts
-const apiUrl = process.env.VITE_API_URL
-```
-
-## Configuration
+### Options
 
 ```ts
 envInject({
-  // Environment variable prefix, defaults to 'VITE_'
   prefix: 'VITE_',
+  globalName: '__VITE_INJECT_ENV__',
+  configFile: '/__vite_env_config__.js',
+  include: ['VITE_EXTRA_KEY'],
+  dockerEntrypoint: true,
 })
 ```
-
-## Setting Environment Variables
-
-Set `VITE_`-prefixed variables in your system environment. Node reads them at runtime.
-
-**PowerShell:**
-
-```powershell
-$env:VITE_API_URL = "https://api.example.com"
-node dist/entry.js
-```
-
-**Bash:**
-
-```bash
-export VITE_API_URL="https://api.example.com"
-node dist/entry.js
-```
-
-## Comparison with Vite Defaults
-
-| | Vite default | This plugin |
-|---|---|---|
-| Variable source | `.env` files + build-time `process.env` | Runtime Node `process.env` |
-| Build output | Static literals | `process.env.VITE_*` references |
-| Changing config | Requires rebuild | Restart process only |
-
-## Limitations
-
-- **Node / SSR builds only** — browser client bundles are not handled
-- **Build phase only** (`apply: 'build'`) — `vite dev` does not transform
-- Does not support `.vue` SFC templates or HTML `%VITE_*%` placeholders
 
 ## Development
 
 ```bash
 npm install
-npm run build   # Vite 8 Rolldown JS build + tsc type generation
+npm run build
 npm test
-npm run dev     # Build plugin and verify playground
+npm run dev
 ```
-
-### Build Details
-
-This package is built with **Vite 8's built-in Rolldown** in library mode (`vite build` + `build.lib`). Type declarations are generated separately by `tsc`:
-
-```bash
-npm run build:js     # Rolldown outputs ESM / CJS
-npm run build:types  # Generate .d.ts
-```
-
-## Publishing
-
-Releases are automated via GitHub Actions and **triggered only when a new tag is pushed** (e.g. `v0.1.0`).
-
-### Prerequisites
-
-1. Create the package on [npmjs.com](https://www.npmjs.com/) and obtain an Access Token
-2. Add `NPM_TOKEN` to your GitHub repository: Settings → Secrets → Actions
-
-### Release Steps
-
-```bash
-# 1. Update the version in package.json
-# 2. Commit and tag (tag version must match package.json)
-git add package.json
-git commit -m "chore: release v0.1.0"
-git tag v0.1.0
-git push origin main
-git push origin v0.1.0
-```
-
-After pushing the tag, `.github/workflows/release.yml` will:
-
-1. Verify the tag version matches `package.json`
-2. Run tests
-3. Build with Rolldown
-4. Publish to NPM (with provenance)
 
 ## License
 
