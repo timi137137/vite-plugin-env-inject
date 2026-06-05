@@ -1,0 +1,14 @@
+{
+  "name": "vite-plugin-env-inject-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "vite-plugin-env-inject": "file:.."
+  },
+  "devDependencies": {
+    "vite": "^6.2.2"
+  }
+}

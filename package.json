@@ -1,0 +1,56 @@
+{
+  "name": "vite-plugin-env-inject",
+  "version": "0.1.0",
+  "description": "Vite plugin that replaces import.meta.env.VITE_* with process.env.VITE_* for Node builds",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:js": "vite build",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build": "npm run build:js && npm run build:types",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test",
+    "dev": "npm run build && npm run build --prefix playground"
+  },
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "env",
+    "environment-variables",
+    "node",
+    "rolldown"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/timi137137/vite-plugin-env-inject.git"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "dependencies": {
+    "magic-string": "^0.30.17"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vite": "^8.0.0",
+    "vitest": "^3.0.9"
+  }
+}
